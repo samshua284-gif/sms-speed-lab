@@ -70,9 +70,18 @@ public class MainActivity extends Activity {
     private boolean pulseRunning;
     private Runnable versePulse;
 
+    // Active location (1.18): the app asks for its own fixes.
+    private TextView locStatus;
+    private android.location.LocationManager locMgr;
+    private android.location.LocationListener locListener;
+    private boolean awaitingFix;
+    private int pendingSeriesCount;
+    private Runnable fixTimeout;
+
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
             refreshSignal();
+            refreshLocStatus();
             handler.postDelayed(this, 7000);
         }
     };
@@ -95,6 +104,7 @@ public class MainActivity extends Activity {
         messageInput = findViewById(R.id.messageInput);
         seriesCount = findViewById(R.id.seriesCount);
         clearBtn = findViewById(R.id.clearBtn);
+        locStatus = findViewById(R.id.locStatus);
 
         engine.setListener(a -> {
             refreshStatsAndLog();
@@ -195,13 +205,12 @@ public class MainActivity extends Activity {
             try { n = Integer.parseInt(seriesCount.getText().toString().trim()); }
             catch (Exception e) { n = 10; }
             if (n < 1) n = 1; if (n > 50) n = 50;
-            seriesActive = true;
-            seriesLeft = n;
-            statusInfo.setText("بدأت سلسلة من " + n + " محاولات — فاصل 15 ثانية");
-            trySeriesSend();
+            beginSeries(n);
         });
         seriesStopBtn.setOnClickListener(v -> {
             seriesActive = false;
+            awaitingFix = false;
+            if (fixTimeout != null) handler.removeCallbacks(fixTimeout);
             statusInfo.setText("أُوقفت السلسلة");
         });
 
@@ -417,6 +426,150 @@ public class MainActivity extends Activity {
     }
 
     // ---------------------------------------------------------------
+    // Active location (1.18) — the radical fix for "time only".
+    //
+    // Through 1.17 the app only READ the system's last-known cache
+    // and never asked for a position of its own; on a phone where
+    // no other app had just requested location, every message left
+    // time-only. Now: (a) while the app is in the foreground it
+    // tracks location itself and remembers every fix it obtains;
+    // (b) a series pressed with no usable fix first DEMANDS one,
+    // waiting at most 12 s before the first attempt leaves;
+    // (c) a permanent status line says, before any send, whether
+    // the next message will carry a location and how fresh it is.
+    // ---------------------------------------------------------------
+
+    private void startLocTracking() {
+        try {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) return;
+            if (locMgr == null) {
+                locMgr = (android.location.LocationManager)
+                        getSystemService(LOCATION_SERVICE);
+            }
+            if (locMgr == null) return;
+            if (locListener == null) {
+                locListener = new android.location.LocationListener() {
+                    @Override public void onLocationChanged(
+                            android.location.Location l) {
+                        onFreshFix(l);
+                    }
+                    @Override public void onProviderEnabled(String p) {}
+                    @Override public void onProviderDisabled(String p) {}
+                    @Override public void onStatusChanged(
+                            String p, int s, Bundle b) {}
+                };
+            }
+            try {
+                locMgr.requestLocationUpdates(
+                        android.location.LocationManager.GPS_PROVIDER,
+                        5000L, 0f, locListener, Looper.getMainLooper());
+            } catch (Throwable ignored) {}
+            try {
+                locMgr.requestLocationUpdates(
+                        android.location.LocationManager.NETWORK_PROVIDER,
+                        5000L, 0f, locListener, Looper.getMainLooper());
+            } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {}
+        refreshLocStatus();
+    }
+
+    private void stopLocTracking() {
+        try {
+            if (locMgr != null && locListener != null) {
+                locMgr.removeUpdates(locListener);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void onFreshFix(android.location.Location l) {
+        if (l == null) return;
+        LocUtil.saveFix(this, l);
+        refreshLocStatus();
+        if (awaitingFix) {
+            awaitingFix = false;
+            if (fixTimeout != null) handler.removeCallbacks(fixTimeout);
+            startSeriesNow(pendingSeriesCount);
+        }
+    }
+
+    private void requestSingleFix() {
+        if (locMgr == null) return;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                java.util.concurrent.Executor ex = getMainExecutor();
+                java.util.function.Consumer<android.location.Location> c =
+                        this::onFreshFix;
+                try {
+                    locMgr.getCurrentLocation(
+                            android.location.LocationManager.GPS_PROVIDER,
+                            null, ex, c);
+                } catch (Throwable ignored) {}
+                try {
+                    locMgr.getCurrentLocation(
+                            android.location.LocationManager.NETWORK_PROVIDER,
+                            null, ex, c);
+                } catch (Throwable ignored) {}
+            } else if (locListener != null) {
+                try {
+                    locMgr.requestSingleUpdate(
+                            android.location.LocationManager.GPS_PROVIDER,
+                            locListener, Looper.getMainLooper());
+                } catch (Throwable ignored) {}
+                try {
+                    locMgr.requestSingleUpdate(
+                            android.location.LocationManager.NETWORK_PROVIDER,
+                            locListener, Looper.getMainLooper());
+                } catch (Throwable ignored) {}
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void refreshLocStatus() {
+        if (locStatus == null || engine == null) return;
+        if (!engine.isAttachLoc()) {
+            locStatus.setText("الموقع: الإرفاق مغلق من الخيار أعلاه");
+            return;
+        }
+        double[] fix = LocUtil.cachedFix(this);
+        if (fix == null) {
+            locStatus.setText("الموقع: لا إصلاح بعد — إن بدأت الآن خرجت الرسالة بالوقت فقط");
+            return;
+        }
+        long ageSec = Math.max(0,
+                (System.currentTimeMillis() - (long) fix[2]) / 1000L);
+        String age = ageSec < 2 ? "الآن" : ("قبل " + ageSec + " ث");
+        locStatus.setText("الموقع جاهز: " + LocUtil.fmt(fix[0], fix[1])
+                + " — " + age);
+    }
+
+    private void beginSeries(int n) {
+        if (!engine.isAttachLoc() || LocUtil.lastKnown(this) != null) {
+            startSeriesNow(n);
+            return;
+        }
+        pendingSeriesCount = n;
+        awaitingFix = true;
+        statusInfo.setText("جارٍ تحديد الموقع قبل بدء السلسلة… (حتى 12 ثانية)");
+        refreshLocStatus();
+        requestSingleFix();
+        fixTimeout = () -> {
+            if (!awaitingFix) return;
+            awaitingFix = false;
+            statusInfo.setText("تعذّر تحديد الموقع — تبدأ السلسلة بالوقت فقط");
+            startSeriesNow(pendingSeriesCount);
+        };
+        handler.postDelayed(fixTimeout, 12000);
+    }
+
+    private void startSeriesNow(int n) {
+        seriesActive = true;
+        seriesLeft = n;
+        statusInfo.setText("بدأت سلسلة من " + n + " محاولات — فاصل 15 ثانية");
+        trySeriesSend();
+    }
+
+    // ---------------------------------------------------------------
     // Series: strictly sequential; the next attempt is scheduled only
     // after the current one resolves, with a fixed 15 s gap.
     // ---------------------------------------------------------------
@@ -559,6 +712,7 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         refreshSignal();
+        startLocTracking();
     }
 
     @Override
@@ -568,6 +722,9 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(dhikrShow);
         handler.removeCallbacks(dhikrSwap);
         stopVersePulse();
+        stopLocTracking();
+        awaitingFix = false;
+        if (fixTimeout != null) handler.removeCallbacks(fixTimeout);
         if (glowAnimator != null) glowAnimator.cancel();
         super.onPause();
     }
@@ -578,6 +735,7 @@ public class MainActivity extends Activity {
         dhikrForeground = true;
         if (glowAnimator != null && !glowAnimator.isRunning()) glowAnimator.start();
         if (verseShown) startVersePulse();
+        startLocTracking();
         if (dhikrOn && dhikrText != null) {
             handler.removeCallbacks(dhikrShow);
             handler.removeCallbacks(dhikrSwap);

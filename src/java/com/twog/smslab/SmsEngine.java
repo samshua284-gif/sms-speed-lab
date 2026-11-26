@@ -70,6 +70,7 @@ public final class SmsEngine {
 
     /** When on, the current coordinates are appended to the message text. */
     public void setAttachLoc(boolean on) { attachLoc = on; }
+    public boolean isAttachLoc() { return attachLoc; }
 
     public boolean isBusy() { return flight != null && !flight.resolved; }
 

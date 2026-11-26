@@ -213,6 +213,14 @@
             </LinearLayout>
 
             <TextView
+                android:id="@+id/locStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+
+            <TextView
                 android:id="@+id/sendBanner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

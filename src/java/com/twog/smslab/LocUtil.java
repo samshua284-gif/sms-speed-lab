@@ -7,10 +7,18 @@ import android.location.LocationManager;
 import java.util.Locale;
 
 /**
- * Location stamping for attempts. Uses the freshest last-known fix
- * (GPS / network / passive) — the send is NEVER delayed waiting for a
- * fix, because the lab measures the network, not the satellite: if no
- * fix exists, the attempt simply carries no stamp.
+ * Location stamping for attempts.
+ *
+ * History's lesson, completed in 1.18: through 1.17 this class only
+ * ever READ the system's last-known cache — the app never asked the
+ * system for a position of its own. When no other app had recently
+ * requested location, every provider's cache stood empty, the app's
+ * own fallback memory was never fed either, and messages went out
+ * time-only again and again. The radical fix: the app now ACTIVELY
+ * tracks location while it is in the foreground (MainActivity's
+ * listener feeds saveFix below) and, at series start, demands a
+ * fresh fix with a bounded wait. This class remains the store and
+ * the reader; the asking lives in the activity.
  *
  * The coordinate line appended to a message is pure GSM-7 text
  * ("LOC: 22.98123,57.52341") so it never forces a UCS-2 re-encode.
@@ -51,11 +59,7 @@ public final class LocUtil {
                 // still made the memory "expire" before it was ever
                 // used, and the field series lost its location from
                 // the second attempt on.
-                sp.edit()
-                        .putFloat("lat", (float) best.getLatitude())
-                        .putFloat("lon", (float) best.getLongitude())
-                        .putLong("seen", System.currentTimeMillis())
-                        .apply();
+                saveFix(ctx, best);
                 return new double[]{best.getLatitude(), best.getLongitude()};
             }
             long seen = sp.getLong("seen", 0);
@@ -64,6 +68,31 @@ public final class LocUtil {
                         sp.getFloat("lat", 0f), sp.getFloat("lon", 0f)};
             }
             return null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Remember a fix the app itself obtained, stamped with NOW. */
+    public static void saveFix(Context ctx, Location l) {
+        if (ctx == null || l == null) return;
+        ctx.getSharedPreferences("smslab_fix", Context.MODE_PRIVATE)
+                .edit()
+                .putFloat("lat", (float) l.getLatitude())
+                .putFloat("lon", (float) l.getLongitude())
+                .putLong("seen", System.currentTimeMillis())
+                .apply();
+    }
+
+    /** @return {lat, lon, seenMs} of the app's remembered fix, or null. */
+    public static double[] cachedFix(Context ctx) {
+        try {
+            android.content.SharedPreferences sp =
+                    ctx.getSharedPreferences("smslab_fix", Context.MODE_PRIVATE);
+            long seen = sp.getLong("seen", 0);
+            if (seen <= 0) return null;
+            return new double[]{
+                    sp.getFloat("lat", 0f), sp.getFloat("lon", 0f), seen};
         } catch (Throwable t) {
             return null;
         }
