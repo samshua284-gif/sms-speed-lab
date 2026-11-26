@@ -37,6 +37,38 @@
                     android:textColor="#FFE066"
                     android:textSize="21sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/verseBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/verseText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="serif"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.5"
+                        android:shadowColor="#FFD94D"
+                        android:shadowDx="0"
+                        android:shadowDy="0"
+                        android:shadowRadius="12"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/verseRef"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center"
+                        android:textColor="@color/gold"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </FrameLayout>
 
             <Button

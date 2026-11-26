@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.Button;
@@ -60,6 +61,7 @@ public class MainActivity extends Activity {
     private GlowBorderDrawable dhikrGlow;
     private GlowBorderDrawable toggleGlow;
     private android.animation.ValueAnimator glowAnimator;
+    private View verseBox;
 
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
@@ -171,6 +173,10 @@ public class MainActivity extends Activity {
         dhikrToggle.setOnClickListener(v -> {
             if (dhikrOn) stopDhikr(); else startDhikr();
         });
+        verseBox = findViewById(R.id.verseBox);
+        ((TextView) findViewById(R.id.verseText)).setText(DhikrCycle.VERSE);
+        ((TextView) findViewById(R.id.verseRef)).setText(DhikrCycle.VERSE_REF);
+        if (!dhikrOn) showVerse(false);
 
         Button seriesBtn = findViewById(R.id.seriesBtn);
         Button seriesStopBtn = findViewById(R.id.seriesStopBtn);
@@ -293,6 +299,8 @@ public class MainActivity extends Activity {
         getSharedPreferences("smslab_ui", MODE_PRIVATE)
                 .edit().putBoolean("dhikr_on", true).apply();
         dhikrToggle.setText("إيقاف الذكر");
+        if (verseBox != null) verseBox.setVisibility(View.GONE);
+        if (dhikrText != null) dhikrText.setVisibility(View.VISIBLE);
         dhikrIdx = 0;
         handler.removeCallbacks(dhikrShow);
         handler.removeCallbacks(dhikrSwap);
@@ -306,8 +314,27 @@ public class MainActivity extends Activity {
         dhikrToggle.setText("تشغيل الذكر");
         handler.removeCallbacks(dhikrShow);
         handler.removeCallbacks(dhikrSwap);
+        showVerse(true);
+    }
+
+    /**
+     * While the dhikr rests, the frame carries the noble verse —
+     * snow-white with a yellow glow, standing still until the
+     * dhikr is started again (owner, 1.15).
+     */
+    private void showVerse(boolean animate) {
         if (dhikrText != null) {
-            dhikrText.animate().alpha(0f).setDuration(300).start();
+            dhikrText.animate().cancel();
+            dhikrText.setVisibility(View.GONE);
+        }
+        if (verseBox != null) {
+            verseBox.setVisibility(View.VISIBLE);
+            if (animate) {
+                verseBox.setAlpha(0f);
+                verseBox.animate().alpha(1f).setDuration(450).start();
+            } else {
+                verseBox.setAlpha(1f);
+            }
         }
     }
 
