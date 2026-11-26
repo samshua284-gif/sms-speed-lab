@@ -306,17 +306,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="إعادة تلقائية حتى أول نجاح (تُعاد الجولة وحدها — حتى 20 جولة)"
+                android:text="إعاده تلقائية حتى أول نجاح ( تُعاد الجوله وحدها حتى تُرسل الرساله تلقائيا أو يتم الايقاف يدويا )"
                 android:textColor="@color/ink"
                 android:textSize="13sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="يعني: إذا فشلت كل المحاولات يعيد التطبيق من جديد لوحده، ويستمر حتى تنجح رسالة أو توقفه أنت — وبحد أقصى 20 جولة."
-                android:textColor="@color/muted"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <TextView
