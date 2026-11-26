@@ -52,6 +52,11 @@ public class MainActivity extends Activity {
     private boolean seriesScheduled;
     private boolean stopOnSuccess;
 
+    private TextView dhikrText;
+    private Button dhikrToggle;
+    private boolean dhikrOn = true;
+    private int dhikrIdx;
+
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
             refreshSignal();
@@ -131,6 +136,15 @@ public class MainActivity extends Activity {
             stopOnSuccess = checked;
             getSharedPreferences("smslab_ui", MODE_PRIVATE)
                     .edit().putBoolean("stop_on_success", checked).apply();
+        });
+
+        initDhikrRunnables();
+        dhikrText = findViewById(R.id.dhikrText);
+        dhikrToggle = findViewById(R.id.dhikrToggle);
+        dhikrOn = ui.getBoolean("dhikr_on", true);
+        dhikrToggle.setText(dhikrOn ? "إيقاف الذكر" : "تشغيل الذكر");
+        dhikrToggle.setOnClickListener(v -> {
+            if (dhikrOn) stopDhikr(); else startDhikr();
         });
 
         Button seriesBtn = findViewById(R.id.seriesBtn);
@@ -218,6 +232,57 @@ public class MainActivity extends Activity {
         charInfo.setText("الأحرف: " + t.length()
                 + " • الترميز: " + GsmUtil.encodingName(t)
                 + " • الأجزاء: " + Math.max(1, GsmUtil.segments(t)));
+    }
+
+    // ---------------------------------------------------------------
+    // Dhikr bar: an endless, gentle rotation in the top bar —
+    // show 10 s, fade, next after 5 s (15 s before the loop
+    // restarts). Optional stop button; the choice is remembered.
+    // ---------------------------------------------------------------
+
+    // Initialized in onCreate (the two runnables refer to each
+    // other, which field initializers cannot express).
+    private Runnable dhikrShow;
+    private Runnable dhikrHide;
+
+    private void initDhikrRunnables() {
+        dhikrShow = () -> {
+            if (!dhikrOn || dhikrText == null) return;
+            dhikrText.setText(DhikrCycle.PHRASES[dhikrIdx]);
+            dhikrText.animate().alpha(1f).setDuration(700).start();
+            handler.postDelayed(dhikrHide, DhikrCycle.SHOW_MS);
+        };
+        dhikrHide = () -> {
+            if (dhikrText != null) {
+                dhikrText.animate().alpha(0f).setDuration(700).start();
+            }
+            long gap = DhikrCycle.gapAfter(dhikrIdx);
+            dhikrIdx = DhikrCycle.next(dhikrIdx);
+            if (dhikrOn) handler.postDelayed(dhikrShow, gap);
+        };
+    }
+
+    private void startDhikr() {
+        dhikrOn = true;
+        getSharedPreferences("smslab_ui", MODE_PRIVATE)
+                .edit().putBoolean("dhikr_on", true).apply();
+        dhikrToggle.setText("إيقاف الذكر");
+        dhikrIdx = 0;
+        handler.removeCallbacks(dhikrShow);
+        handler.removeCallbacks(dhikrHide);
+        handler.post(dhikrShow);
+    }
+
+    private void stopDhikr() {
+        dhikrOn = false;
+        getSharedPreferences("smslab_ui", MODE_PRIVATE)
+                .edit().putBoolean("dhikr_on", false).apply();
+        dhikrToggle.setText("تشغيل الذكر");
+        handler.removeCallbacks(dhikrShow);
+        handler.removeCallbacks(dhikrHide);
+        if (dhikrText != null) {
+            dhikrText.animate().alpha(0f).setDuration(400).start();
+        }
     }
 
     // ---------------------------------------------------------------
@@ -368,7 +433,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         saveInputs();
+        handler.removeCallbacks(dhikrShow);
+        handler.removeCallbacks(dhikrHide);
         super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (dhikrOn && dhikrText != null) {
+            handler.removeCallbacks(dhikrShow);
+            handler.removeCallbacks(dhikrHide);
+            handler.post(dhikrShow);
+        }
     }
 
     @Override
