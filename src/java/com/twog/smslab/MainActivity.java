@@ -670,15 +670,19 @@ public class MainActivity extends Activity {
     }
 
     private void beginSeries(int n) {
-        // The message is written; put the pen down (owner, 1.20):
-        // focus leaves the box, the cursor hides, the keyboard goes.
-        messageInput.clearFocus();
+        // The writing is done; put the pen down (owner, 1.20;
+        // generalised 1.30 — the count box kept its cursor when
+        // IT held the focus): focus leaves whichever box holds
+        // it, the cursor hides, the keyboard goes.
+        android.view.View focused = getCurrentFocus();
+        if (focused != null) focused.clearFocus();
         try {
             android.view.inputmethod.InputMethodManager imm =
                     (android.view.inputmethod.InputMethodManager)
                             getSystemService(INPUT_METHOD_SERVICE);
             if (imm != null) {
-                imm.hideSoftInputFromWindow(messageInput.getWindowToken(), 0);
+                android.view.View anchor = focused != null ? focused : messageInput;
+                imm.hideSoftInputFromWindow(anchor.getWindowToken(), 0);
             }
         } catch (Throwable ignored) {}
         // No location permission, no located series (1.20): ask
