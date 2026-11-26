@@ -412,7 +412,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:gravity="center"
-            android:text="بعد ضغط «بدء السلسلة»: إذا خرجت من التطبيق اتركه يعمل في الخلفية — عندما يجد الإشارة سيرسل الرسالة تلقائيًا"
+            android:text="بعد ضغط «بدء السلسلة»: إذا خرجت من التطبيق اتركه يعمل في الخلفية دون إغلاقه من شاشة الجوال — عندما يجد الإشارة سيرسل الرسالة تلقائيًا"
             android:textColor="@color/muted"
             android:textSize="11sp" />
 
