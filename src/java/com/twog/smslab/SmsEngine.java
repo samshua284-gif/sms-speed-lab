@@ -122,10 +122,13 @@ public final class SmsEngine {
 
         CellInfoUtil.Snapshot cell = CellInfoUtil.snapshot(appContext);
 
+        String normalized = PhoneNorm.normalize(phone);
+
         AttemptStore.Attempt a = new AttemptStore.Attempt();
         a.id = store.nextId();
         a.tsWall = System.currentTimeMillis();
-        a.phone = phone;
+        a.phone = normalized;
+        a.phoneTyped = phone;
         a.text = text;
         a.encoding = GsmUtil.encodingName(text);
         a.parts = partCount;
@@ -159,13 +162,13 @@ public final class SmsEngine {
 
         try {
             if (partCount == 1) {
-                mgr.sendTextMessage(phone, null, text, sentPI, delPI);
+                mgr.sendTextMessage(normalized, null, text, sentPI, delPI);
             } else {
                 ArrayList<PendingIntent> sList =
                         new ArrayList<>(Collections.nCopies(partCount, sentPI));
                 ArrayList<PendingIntent> dList =
                         new ArrayList<>(Collections.nCopies(partCount, delPI));
-                mgr.sendMultipartTextMessage(phone, null, parts, sList, dList);
+                mgr.sendMultipartTextMessage(normalized, null, parts, sList, dList);
             }
         } catch (Exception e) {
             resolveFailed(a, "EXC: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
@@ -259,11 +262,33 @@ public final class SmsEngine {
 
     static String errorName(int code) {
         switch (code) {
-            case SmsManager.RESULT_ERROR_GENERIC_FAILURE: return "GENERIC_FAILURE";
-            case SmsManager.RESULT_ERROR_NO_SERVICE: return "NO_SERVICE";
-            case SmsManager.RESULT_ERROR_RADIO_OFF: return "RADIO_OFF";
-            case SmsManager.RESULT_ERROR_NULL_PDU: return "NULL_PDU";
-            default: return "Error " + code;
+            case SmsManager.RESULT_ERROR_GENERIC_FAILURE: return "فشل عام (GENERIC_FAILURE)";
+            case SmsManager.RESULT_ERROR_RADIO_OFF: return "الراديو مغلق (RADIO_OFF)";
+            case SmsManager.RESULT_ERROR_NULL_PDU: return "بيانات فاسدة (NULL_PDU)";
+            case SmsManager.RESULT_ERROR_NO_SERVICE: return "لا خدمة (NO_SERVICE)";
+            case SmsManager.RESULT_ERROR_LIMIT_EXCEEDED: return "تجاوز حد الإرسال (LIMIT_EXCEEDED)";
+            case SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE: return "الرقم غير مسموح (FDN_CHECK_FAILURE)";
+            case SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED: return "رقم قصير غير مسموح (SHORT_CODE_NOT_ALLOWED)";
+            case SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED: return "رقم قصير محظور (SHORT_CODE_NEVER_ALLOWED)";
+            // Codes 9..24 are real SmsManager result codes but hidden from
+            // the public SDK, so they are matched as documented literals.
+            case 9: return "الراديو غير متاح (RADIO_NOT_AVAILABLE)";
+            case 10: return "رفض من الشبكة (NETWORK_REJECT)";
+            case 11: return "مدخلات غير صالحة (INVALID_ARGUMENTS)";
+            case 12: return "حالة غير صالحة (INVALID_STATE)";
+            case 13: return "لا ذاكرة (NO_MEMORY)";
+            case 14: return "صيغة رسالة غير صالحة (INVALID_SMS_FORMAT)";
+            case 15: return "خطأ نظام (SYSTEM_ERROR)";
+            case 16: return "خطأ مودم (MODEM_ERROR)";
+            case 17: return "خطأ شبكة (NETWORK_ERROR)";
+            case 18: return "خطأ ترميز (ENCODING_ERROR)";
+            case 19: return "عنوان مركز رسائل غير صالح (INVALID_SMSC_ADDRESS)";
+            case 20: return "عملية غير مسموحة (OPERATION_NOT_ALLOWED)";
+            case 21: return "خطأ داخلي (INTERNAL_ERROR)";
+            case 22: return "لا موارد (NO_RESOURCES)";
+            case 23: return "أُلغيت (CANCELLED)";
+            case 24: return "محظورة (BLOCKED)";
+            default: return "خطأ " + code;
         }
     }
 }

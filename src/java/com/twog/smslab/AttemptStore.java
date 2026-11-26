@@ -28,7 +28,8 @@ public final class AttemptStore {
     public static final class Attempt {
         public long id;
         public long tsWall;        // wall-clock send time (epoch ms)
-        public String phone = "";
+        public String phone = "";      // number as SENT (normalized)
+        public String phoneTyped = ""; // number exactly as typed
         public String text = "";
         public String encoding = "";
         public int parts;
@@ -45,6 +46,7 @@ public final class AttemptStore {
             JSONObject o = new JSONObject();
             try {
                 o.put("id", id); o.put("ts", tsWall); o.put("phone", phone);
+                o.put("phoneT", phoneTyped);
                 o.put("text", text); o.put("enc", encoding); o.put("parts", parts);
                 o.put("net", netType); o.put("dbm", dbm); o.put("level", level);
                 o.put("asu", asu); o.put("status", status); o.put("error", error);
@@ -58,6 +60,7 @@ public final class AttemptStore {
             a.id = o.optLong("id");
             a.tsWall = o.optLong("ts");
             a.phone = o.optString("phone", "");
+            a.phoneTyped = o.optString("phoneT", "");
             a.text = o.optString("text", "");
             a.encoding = o.optString("enc", "");
             a.parts = o.optInt("parts");
@@ -144,13 +147,14 @@ public final class AttemptStore {
 
     public synchronized String toCsv() {
         StringBuilder sb = new StringBuilder();
-        sb.append("id,time_iso,phone,encoding,parts,network,dbm,level,asu,status,error,submit_ms,delivery_ms,text\n");
+        sb.append("id,time_iso,phone_sent,phone_typed,encoding,parts,network,dbm,level,asu,status,error,submit_ms,delivery_ms,text\n");
         java.text.SimpleDateFormat fmt =
                 new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US);
         for (Attempt a : all()) {
             sb.append(a.id).append(',');
             sb.append(fmt.format(new java.util.Date(a.tsWall))).append(',');
             sb.append(q(a.phone)).append(',');
+            sb.append(q(a.phoneTyped)).append(',');
             sb.append(q(a.encoding)).append(',');
             sb.append(a.parts).append(',');
             sb.append(q(a.netType)).append(',');
