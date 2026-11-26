@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
 
     private TextView signalDbm, signalMeta, charInfo, statusInfo, statsInfo, logInfo;
     private EditText phoneInput, messageInput, seriesCount;
-    private Button sendBtn, clearBtn;
+    private Button clearBtn;
 
     private boolean seriesActive;
     private int seriesLeft;
@@ -76,7 +76,6 @@ public class MainActivity extends Activity {
         phoneInput = findViewById(R.id.phoneInput);
         messageInput = findViewById(R.id.messageInput);
         seriesCount = findViewById(R.id.seriesCount);
-        sendBtn = findViewById(R.id.sendBtn);
         clearBtn = findViewById(R.id.clearBtn);
 
         engine.setListener(a -> {
@@ -127,17 +126,10 @@ public class MainActivity extends Activity {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void afterTextChanged(Editable s) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                String t = s == null ? "" : s.toString();
-                charInfo.setText("الأحرف: " + t.length()
-                        + " • الترميز: " + GsmUtil.encodingName(t)
-                        + " • الأجزاء: " + Math.max(1, GsmUtil.segments(t)));
+                updateCharInfo(s == null ? "" : s.toString());
             }
         });
-
-        sendBtn.setOnClickListener(v -> {
-            if (!ensureSmsPermission()) return;
-            doSend();
-        });
+        updateCharInfo(messageInput.getText().toString());
 
         CheckBox stopCheck = findViewById(R.id.stopOnSuccessCheck);
         stopOnSuccess = ui.getBoolean("stop_on_success", false);
@@ -228,19 +220,10 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
-    private void doSend() {
-        String phone = phoneInput.getText().toString().trim();
-        String text = messageInput.getText().toString();
-        if (phone.isEmpty()) { phoneInput.setError("أدخل رقم الهاتف"); return; }
-        if (text.trim().isEmpty()) { messageInput.setError("أدخل نص الرسالة"); return; }
-        saveInputs();
-        long id = engine.send(phone, text);
-        if (id < 0) {
-            Toast.makeText(this, "محاولة جارية — انتظر نتيجتها أولًا", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        statusInfo.setText("جارٍ إرسال المحاولة #" + id + " ...");
-        refreshStatsAndLog();
+    private void updateCharInfo(String t) {
+        charInfo.setText("الأحرف: " + t.length()
+                + " • الترميز: " + GsmUtil.encodingName(t)
+                + " • الأجزاء: " + Math.max(1, GsmUtil.segments(t)));
     }
 
     // ---------------------------------------------------------------

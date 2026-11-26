@@ -148,15 +148,17 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/sendBtn"
+            <TextView
+                android:id="@+id/sendBanner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:background="@drawable/btn_gold"
-                android:text="إرسال اختبار"
-                android:textColor="@color/gold_ink"
-                android:textSize="17sp"
+                android:background="@drawable/banner_emerald"
+                android:padding="13dp"
+                android:gravity="center"
+                android:text="إرسال رسالة تلقائية عند الضغط على بدء السلسلة"
+                android:textColor="@color/gold"
+                android:textSize="15sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
