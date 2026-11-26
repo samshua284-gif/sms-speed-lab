@@ -48,8 +48,4 @@ public final class LocUtil {
         return String.format(Locale.US, "%.5f,%.5f", lat, lon);
     }
 
-    /** The line appended to the message text when attaching is on. */
-    public static String locLine(double lat, double lon) {
-        return "\nLOC: " + fmt(lat, lon);
-    }
 }

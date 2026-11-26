@@ -122,23 +122,15 @@ public final class SmsEngine {
 
         String normalized = PhoneNorm.normalize(phone);
 
-        // Re-stamp a test template with THIS attempt's real id and
-        // the current time, so a series never repeats one frozen
-        // stamp. peekNextId is exactly the id this attempt is about
-        // to receive (sends are serialized; nothing else consumes ids).
-        String stamped = StampUtil.stamp(text, store.peekNextId(),
-                new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
-                        .format(new java.util.Date()));
-
-        // Location next: the stamp — and, when attaching is on, the
-        // coordinate line — are part of the attempt BEFORE encoding
+        // Every message leaves with its send time stamped
+        // automatically — and its location under it when attaching
+        // is on. Both lines are part of the payload BEFORE encoding
         // and part count are computed, so the record describes the
         // exact payload that leaves the phone.
         double[] loc = LocUtil.lastKnown(appContext);
-        String finalText = stamped;
-        if (loc != null && attachLoc) {
-            finalText = stamped + LocUtil.locLine(loc[0], loc[1]);
-        }
+        String hhmm = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+                .format(new java.util.Date());
+        String finalText = Payload.compose(text, hhmm, loc, attachLoc);
 
         SmsManager mgr = getSmsManager();
         ArrayList<String> parts = mgr.divideMessage(finalText);

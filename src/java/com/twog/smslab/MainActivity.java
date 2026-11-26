@@ -99,11 +99,12 @@ public class MainActivity extends Activity {
         });
         engine.register();
 
-        // Restore the last number and message — a repeated field test
-        // must not start with retyping.
+        // Restore the last number only. The message box opens EMPTY
+        // every time by the owner's design (1.6): each message is
+        // written fresh and leaves with its time — and location —
+        // stamped automatically.
         SharedPreferences ui = getSharedPreferences("smslab_ui", MODE_PRIVATE);
         phoneInput.setText(ui.getString("last_phone", ""));
-        messageInput.setText(ui.getString("last_text", ""));
 
         CheckBox attachLoc = findViewById(R.id.attachLocCheck);
         attachLoc.setChecked(ui.getBoolean("attach_loc", true));
@@ -112,14 +113,6 @@ public class MainActivity extends Activity {
             engine.setAttachLoc(checked);
             getSharedPreferences("smslab_ui", MODE_PRIVATE)
                     .edit().putBoolean("attach_loc", checked).apply();
-        });
-
-        Button quickTestBtn = findViewById(R.id.quickTestBtn);
-        quickTestBtn.setOnClickListener(v -> {
-            String t = "TEST #" + store.peekNextId() + " - "
-                    + new SimpleDateFormat("HH:mm", Locale.US).format(new Date());
-            messageInput.setText(t);
-            messageInput.setSelection(t.length());
         });
 
         messageInput.addTextChangedListener(new TextWatcher() {
@@ -206,9 +199,10 @@ public class MainActivity extends Activity {
     }
 
     private void saveInputs() {
+        // Only the number is remembered (1.6) — the message box
+        // opens empty every time.
         getSharedPreferences("smslab_ui", MODE_PRIVATE).edit()
                 .putString("last_phone", phoneInput.getText().toString())
-                .putString("last_text", messageInput.getText().toString())
                 .apply();
     }
 
