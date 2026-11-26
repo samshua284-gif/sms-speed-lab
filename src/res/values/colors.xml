@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#E8E2D4</color>
+    <color name="muted">#9AA7B4</color>
+    <color name="gold">#C9A227</color>
+    <color name="gold_ink">#1A1405</color>
+    <color name="panel">#1B1D2C</color>
+    <color name="sky_top">#16294D</color>
+    <color name="sky_deep">#101E39</color>
+    <color name="abyss">#130F1C</color>
+</resources>
