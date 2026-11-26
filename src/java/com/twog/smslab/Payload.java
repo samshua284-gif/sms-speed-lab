@@ -10,8 +10,8 @@ import java.util.Locale;
  * option is on and a fix exists — its location under it:
  *
  *     <the message exactly as written>
- *     TIME: 07:47
  *     LOC: 22.52460,57.53556
+ *     TIME: 07:47
  *
  * Both lines are plain GSM-7-safe text and are part of the payload
  * BEFORE encoding and segment count are computed, so the attempt
@@ -23,14 +23,15 @@ public final class Payload {
 
     public static String compose(String text, String hhmm,
                                  double[] loc, boolean attachLoc) {
+        // Owner's order (1.7): location first, time after it.
         StringBuilder sb = new StringBuilder(text);
-        sb.append("\nTIME: ").append(hhmm);
         if (loc != null && attachLoc) {
             sb.append("\nLOC: ")
               .append(String.format(Locale.US, "%.5f", loc[0]))
               .append(',')
               .append(String.format(Locale.US, "%.5f", loc[1]));
         }
+        sb.append("\nTIME: ").append(hhmm);
         return sb.toString();
     }
 }
