@@ -18,9 +18,9 @@
             android:orientation="vertical">
 
             <FrameLayout
+                android:id="@+id/dhikrFrame"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/dhikr_bar"
                 android:padding="12dp">
 
                 <TextView
@@ -45,7 +45,8 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
                 android:layout_marginTop="5dp"
-                android:background="@drawable/btn_ghost"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="إيقاف الذكر"
                 android:textColor="@color/ink"
                 android:textSize="11sp" />

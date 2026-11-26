@@ -57,6 +57,9 @@ public class MainActivity extends Activity {
     private boolean dhikrOn = true;
     private boolean dhikrForeground;
     private int dhikrIdx;
+    private GlowBorderDrawable dhikrGlow;
+    private GlowBorderDrawable toggleGlow;
+    private android.animation.ValueAnimator glowAnimator;
 
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
@@ -142,6 +145,26 @@ public class MainActivity extends Activity {
         initDhikrRunnables();
         dhikrText = findViewById(R.id.dhikrText);
         dhikrToggle = findViewById(R.id.dhikrToggle);
+
+        // Flowing light threads (1.13): sunset around the dhikr
+        // frame, green-white around its stop button — one clock
+        // drives both and rests in the background.
+        float density = getResources().getDisplayMetrics().density;
+        dhikrGlow = new GlowBorderDrawable(0xFF101E33,
+                GlowBorderDrawable.SUNSET, 12f, 2f, 1f, density);
+        findViewById(R.id.dhikrFrame).setBackground(dhikrGlow);
+        toggleGlow = new GlowBorderDrawable(0xFF141C2C,
+                GlowBorderDrawable.GREEN_WHITE, 10f, 1.6f, -0.7f, density);
+        dhikrToggle.setBackground(toggleGlow);
+        glowAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        glowAnimator.setDuration(7000L);
+        glowAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        glowAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
+        glowAnimator.addUpdateListener(an -> {
+            float p = (float) an.getAnimatedValue();
+            dhikrGlow.setPhase(p);
+            toggleGlow.setPhase(p);
+        });
         dhikrOn = ui.getBoolean("dhikr_on", true);
         dhikrToggle.setText(dhikrOn ? "إيقاف الذكر" : "تشغيل الذكر");
         dhikrToggle.setOnClickListener(v -> {
@@ -438,6 +461,7 @@ public class MainActivity extends Activity {
         dhikrForeground = false;
         handler.removeCallbacks(dhikrShow);
         handler.removeCallbacks(dhikrSwap);
+        if (glowAnimator != null) glowAnimator.cancel();
         super.onPause();
     }
 
@@ -445,6 +469,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         dhikrForeground = true;
+        if (glowAnimator != null && !glowAnimator.isRunning()) glowAnimator.start();
         if (dhikrOn && dhikrText != null) {
             handler.removeCallbacks(dhikrShow);
             handler.removeCallbacks(dhikrSwap);
