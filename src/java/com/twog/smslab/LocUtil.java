@@ -43,10 +43,14 @@ public final class LocUtil {
                     LocationManager.GPS_PROVIDER,
                     LocationManager.NETWORK_PROVIDER,
                     LocationManager.PASSIVE_PROVIDER};
+            long nowMs = System.currentTimeMillis();
             for (String p : providers) {
                 try {
                     Location l = lm.getLastKnownLocation(p);
                     if (l == null) continue;
+                    // 1.20: never resurrect a stale system fix as
+                    // a current position.
+                    if (!FixCache.systemFixAcceptable(l.getTime(), nowMs)) continue;
                     if (best == null || l.getTime() > best.getTime()) best = l;
                 } catch (SecurityException | IllegalArgumentException ignored) {}
             }

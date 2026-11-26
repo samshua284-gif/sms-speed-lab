@@ -446,8 +446,10 @@ public class MainActivity extends Activity {
 
     private void startLocTracking() {
         try {
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                    != PackageManager.PERMISSION_GRANTED) return;
+            if (!hasLocPermission()) {
+                refreshLocStatus();
+                return;
+            }
             if (locMgr == null) {
                 locMgr = (android.location.LocationManager)
                         getSystemService(LOCATION_SERVICE);
@@ -465,11 +467,13 @@ public class MainActivity extends Activity {
                             String p, int s, Bundle b) {}
                 };
             }
-            try {
-                locMgr.requestLocationUpdates(
-                        android.location.LocationManager.GPS_PROVIDER,
-                        5000L, 0f, locListener, Looper.getMainLooper());
-            } catch (Throwable ignored) {}
+            if (hasFinePermission()) {
+                try {
+                    locMgr.requestLocationUpdates(
+                            android.location.LocationManager.GPS_PROVIDER,
+                            5000L, 0f, locListener, Looper.getMainLooper());
+                } catch (Throwable ignored) {}
+            }
             try {
                 locMgr.requestLocationUpdates(
                         android.location.LocationManager.NETWORK_PROVIDER,
@@ -505,11 +509,13 @@ public class MainActivity extends Activity {
                 java.util.concurrent.Executor ex = getMainExecutor();
                 java.util.function.Consumer<android.location.Location> c =
                         this::onFreshFix;
-                try {
-                    locMgr.getCurrentLocation(
-                            android.location.LocationManager.GPS_PROVIDER,
-                            null, ex, c);
-                } catch (Throwable ignored) {}
+                if (hasFinePermission()) {
+                    try {
+                        locMgr.getCurrentLocation(
+                                android.location.LocationManager.GPS_PROVIDER,
+                                null, ex, c);
+                    } catch (Throwable ignored) {}
+                }
                 try {
                     locMgr.getCurrentLocation(
                             android.location.LocationManager.NETWORK_PROVIDER,
@@ -521,11 +527,13 @@ public class MainActivity extends Activity {
                             null, ex, c);
                 } catch (Throwable ignored) {}
             } else if (locListener != null) {
-                try {
-                    locMgr.requestSingleUpdate(
-                            android.location.LocationManager.GPS_PROVIDER,
-                            locListener, Looper.getMainLooper());
-                } catch (Throwable ignored) {}
+                if (hasFinePermission()) {
+                    try {
+                        locMgr.requestSingleUpdate(
+                                android.location.LocationManager.GPS_PROVIDER,
+                                locListener, Looper.getMainLooper());
+                    } catch (Throwable ignored) {}
+                }
                 try {
                     locMgr.requestSingleUpdate(
                             android.location.LocationManager.NETWORK_PROVIDER,
@@ -535,10 +543,31 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
+    private boolean hasLocPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasFinePermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * The status line tells the TRUTH, in order (1.20): attach
+     * off? permission off? no fix? stale fix (named stale, with
+     * its age — never dressed as «جاهز»)? only then: ready.
+     */
     private void refreshLocStatus() {
         if (locStatus == null || engine == null) return;
         if (!engine.isAttachLoc()) {
             locStatus.setText("الموقع: الإرفاق مغلق من الخيار أعلاه");
+            return;
+        }
+        if (!hasLocPermission()) {
+            locStatus.setText("الموقع: إذن الموقع غير مفعّل — فعّله ليُرفق الموقع في الرسالة");
             return;
         }
         double[] fix = LocUtil.cachedFix(this);
@@ -546,8 +575,14 @@ public class MainActivity extends Activity {
             locStatus.setText("الموقع: لا إصلاح بعد — إن بدأت الآن خرجت الرسالة بالوقت فقط");
             return;
         }
-        long ageSec = Math.max(0,
-                (System.currentTimeMillis() - (long) fix[2]) / 1000L);
+        long now = System.currentTimeMillis();
+        long ageMs = now - (long) fix[2];
+        if (!FixCache.usable((long) fix[2], now)) {
+            locStatus.setText("الموقع: آخر إصلاح قبل " + (ageMs / 60000L)
+                    + " د — قديم ولن يُرفق؛ جارٍ طلب إصلاح جديد…");
+            return;
+        }
+        long ageSec = Math.max(0, ageMs / 1000L);
         String age = ageSec < 2 ? "الآن" : ("قبل " + ageSec + " ث");
         locStatus.setText("الموقع جاهز: " + LocUtil.fmt(fix[0], fix[1])
                 + " — " + age);
@@ -566,6 +601,28 @@ public class MainActivity extends Activity {
     }
 
     private void beginSeries(int n) {
+        // The message is written; put the pen down (owner, 1.20):
+        // focus leaves the box, the cursor hides, the keyboard goes.
+        messageInput.clearFocus();
+        try {
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager)
+                            getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(messageInput.getWindowToken(), 0);
+            }
+        } catch (Throwable ignored) {}
+        // No location permission, no located series (1.20): ask
+        // for it here and now instead of silently sending bare.
+        if (engine.isAttachLoc() && !hasLocPermission()) {
+            statusInfo.setText("يلزم إذن الموقع لإرفاق الإحداثيات — فعّله ثم أعد بدء السلسلة");
+            refreshLocStatus();
+            requestPermissions(new String[]{
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.READ_PHONE_STATE,
+                    Manifest.permission.ACCESS_FINE_LOCATION}, REQ_PERM);
+            return;
+        }
         setSeriesButtons(true);
         if (!engine.isAttachLoc() || LocUtil.lastKnown(this) != null) {
             startSeriesNow(n);

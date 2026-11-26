@@ -28,4 +28,16 @@ public final class FixCache {
         long age = nowMs - fixTimeMs;
         return age >= 0 && age <= MAX_AGE_MS;
     }
+
+    /**
+     * Whether a SYSTEM last-known fix may be accepted at face
+     * value (1.20): only while its own birth is recent. An old
+     * system fix must never be re-stamped "seen now" and sent as
+     * a current position — the app waits for a fix of its own
+     * instead. (Field proof: a 73-minute-old fix displayed as
+     * «جاهز» while no message carried it.)
+     */
+    public static boolean systemFixAcceptable(long birthMs, long nowMs) {
+        return usable(birthMs, nowMs);
+    }
 }
