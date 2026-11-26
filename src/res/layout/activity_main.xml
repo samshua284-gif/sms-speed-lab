@@ -213,6 +213,15 @@
                     android:textColor="@color/ink"
                     android:textSize="15sp" />
             </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/stopOnSuccessCheck"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="إيقاف عند أول نجاح (وضع الوصول — للقياس أبقِه مطفأً)"
+                android:textColor="@color/ink"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <TextView

@@ -50,6 +50,7 @@ public class MainActivity extends Activity {
     private boolean seriesActive;
     private int seriesLeft;
     private boolean seriesScheduled;
+    private boolean stopOnSuccess;
 
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
@@ -83,18 +84,18 @@ public class MainActivity extends Activity {
             if (AttemptStore.S_SUBMITTED.equals(a.status)) {
                 statusInfo.setText("قُبلت الرسالة عند مركز الرسائل — بانتظار تقرير التسليم");
                 beep(ToneGenerator.TONE_PROP_BEEP, 140);
-                onSeriesAttemptResolved();
+                onSeriesAttemptResolved(a.status);
             } else if (AttemptStore.S_DELIVERED.equals(a.status)) {
                 statusInfo.setText("سُلّمت الرسالة إلى الهاتف الآخر ✓");
                 beep(ToneGenerator.TONE_PROP_ACK, 220);
             } else if (AttemptStore.S_FAILED.equals(a.status)) {
                 statusInfo.setText("فشل الإرسال: " + a.error);
                 beep(ToneGenerator.TONE_PROP_NACK, 260);
-                onSeriesAttemptResolved();
+                onSeriesAttemptResolved(a.status);
             } else if (AttemptStore.S_TIMEOUT.equals(a.status)) {
                 statusInfo.setText("انقضت مهلة نتيجة الإرسال (النتيجة غير معروفة)");
                 beep(ToneGenerator.TONE_PROP_NACK, 260);
-                onSeriesAttemptResolved();
+                onSeriesAttemptResolved(a.status);
             }
         });
         engine.register();
@@ -136,6 +137,15 @@ public class MainActivity extends Activity {
         sendBtn.setOnClickListener(v -> {
             if (!ensureSmsPermission()) return;
             doSend();
+        });
+
+        CheckBox stopCheck = findViewById(R.id.stopOnSuccessCheck);
+        stopOnSuccess = ui.getBoolean("stop_on_success", false);
+        stopCheck.setChecked(stopOnSuccess);
+        stopCheck.setOnCheckedChangeListener((v, checked) -> {
+            stopOnSuccess = checked;
+            getSharedPreferences("smslab_ui", MODE_PRIVATE)
+                    .edit().putBoolean("stop_on_success", checked).apply();
         });
 
         Button seriesBtn = findViewById(R.id.seriesBtn);
@@ -267,8 +277,14 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void onSeriesAttemptResolved() {
-        if (!seriesActive || seriesScheduled) return;
+    private void onSeriesAttemptResolved(String status) {
+        if (!seriesActive) return;
+        if (SeriesPolicy.shouldStop(stopOnSuccess, status)) {
+            seriesActive = false;
+            statusInfo.setText("توقفت السلسلة: قُبلت أول رسالة — وصلت ✓");
+            return;
+        }
+        if (seriesScheduled) return;
         seriesScheduled = true;
         handler.postDelayed(() -> {
             seriesScheduled = false;
