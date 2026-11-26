@@ -306,7 +306,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="إعادة تلقائية حتى أول نجاح (إن لم تُقبل أي رسالة تُعاد الجولة وحدها)"
+                android:text="إعادة تلقائية حتى أول نجاح (تُعاد الجولة وحدها — حتى 20 جولة)"
                 android:textColor="@color/ink"
                 android:textSize="13sp" />
         </LinearLayout>

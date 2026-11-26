@@ -27,19 +27,34 @@ public final class SeriesPolicy {
     }
 
     /**
+     * The auto-repeat ceiling (owner-approved, 1.26): at most
+     * MAX_ROUNDS rounds run back to back. In the worst case
+     * (every attempt a full 60 s timeout) that is roughly 75
+     * minutes of trying at a round size of 3, about four hours
+     * at 10 — a long dead stretch of desert, after which a phone
+     * sitting in a truly dead spot would only be spending its
+     * battery. Hitting the ceiling is announced, never silent.
+     */
+    public static final int MAX_ROUNDS = 20;
+
+    /**
      * Auto-repeat rounds (owner's requirement, 1.24): the desert
      * case is not a phone toggled off on purpose — it is 2G enabled
      * with the service simply absent, attempts ending in timeouts,
      * and the owner should NOT have to keep pressing "start series"
      * again. With autoRepeat on, a round that ends with ZERO
-     * submitted attempts is followed by a fresh round on its own;
-     * the machine stops only when a round contains a submission,
-     * or when the owner presses stop. A round WITH a submission
-     * never repeats: the message got out, and re-sending would
-     * spend balance and risk a duplicate at the other phone.
+     * submitted attempts is followed by a fresh round on its own,
+     * until the ceiling; the machine stops when a round contains
+     * a submission, when the ceiling is reached, or when the
+     * owner presses stop. A round WITH a submission never
+     * repeats: the message got out, and re-sending would spend
+     * balance and risk a duplicate at the other phone.
+     *
+     * @param roundNo the round that just ended (1-based)
      */
     public static boolean shouldRepeatRound(boolean autoRepeat,
-                                            boolean anySubmittedThisRound) {
-        return autoRepeat && !anySubmittedThisRound;
+                                            boolean anySubmittedThisRound,
+                                            int roundNo) {
+        return autoRepeat && !anySubmittedThisRound && roundNo < MAX_ROUNDS;
     }
 }
