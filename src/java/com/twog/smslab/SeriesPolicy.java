@@ -20,4 +20,21 @@ public final class SeriesPolicy {
     public static boolean shouldStop(boolean stopOnSuccess, String resolvedStatus) {
         return stopOnSuccess && "SUBMITTED".equals(resolvedStatus);
     }
+
+    /**
+     * Auto-repeat rounds (owner's requirement, 1.24): the desert
+     * case is not a phone toggled off on purpose — it is 2G enabled
+     * with the service simply absent, attempts ending in timeouts,
+     * and the owner should NOT have to keep pressing "start series"
+     * again. With autoRepeat on, a round that ends with ZERO
+     * submitted attempts is followed by a fresh round on its own;
+     * the machine stops only when a round contains a submission,
+     * or when the owner presses stop. A round WITH a submission
+     * never repeats: the message got out, and re-sending would
+     * spend balance and risk a duplicate at the other phone.
+     */
+    public static boolean shouldRepeatRound(boolean autoRepeat,
+                                            boolean anySubmittedThisRound) {
+        return autoRepeat && !anySubmittedThisRound;
+    }
 }

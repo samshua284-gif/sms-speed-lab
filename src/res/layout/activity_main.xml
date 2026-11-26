@@ -309,6 +309,15 @@
                 android:text="إيقاف عند أول نجاح (وضع الوصول — للقياس أبقِه مطفأً)"
                 android:textColor="@color/ink"
                 android:textSize="13sp" />
+
+            <CheckBox
+                android:id="@+id/autoRepeatCheck"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="إعادة تلقائية حتى أول نجاح (إن لم تُقبل أي رسالة تُعاد الجولة وحدها)"
+                android:textColor="@color/ink"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <TextView

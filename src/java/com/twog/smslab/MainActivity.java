@@ -52,6 +52,10 @@ public class MainActivity extends Activity {
     private int seriesLeft;
     private boolean seriesScheduled;
     private boolean stopOnSuccess;
+    private boolean autoRepeat;
+    private int seriesRoundCount;
+    private boolean seriesSubmitted;
+    private int roundNo;
 
     private TextView dhikrText;
     private Button dhikrToggle;
@@ -196,6 +200,15 @@ public class MainActivity extends Activity {
             stopOnSuccess = checked;
             getSharedPreferences("smslab_ui", MODE_PRIVATE)
                     .edit().putBoolean("stop_on_success", checked).apply();
+        });
+
+        CheckBox repeatCheck = findViewById(R.id.autoRepeatCheck);
+        autoRepeat = ui.getBoolean("auto_repeat", false);
+        repeatCheck.setChecked(autoRepeat);
+        repeatCheck.setOnCheckedChangeListener((v, checked) -> {
+            autoRepeat = checked;
+            getSharedPreferences("smslab_ui", MODE_PRIVATE)
+                    .edit().putBoolean("auto_repeat", checked).apply();
         });
 
         initDhikrRunnables();
@@ -711,6 +724,9 @@ public class MainActivity extends Activity {
     private void startSeriesNow(int n) {
         seriesActive = true;
         seriesLeft = n;
+        seriesRoundCount = n;
+        seriesSubmitted = false;
+        roundNo = 1;
         statusInfo.setText("بدأت سلسلة من " + n + " محاولات — فاصل 15 ثانية");
         trySeriesSend();
     }
@@ -723,6 +739,17 @@ public class MainActivity extends Activity {
     private void trySeriesSend() {
         if (!seriesActive) return;
         if (seriesLeft <= 0) {
+            // Auto-repeat (1.24): a round with zero submissions is
+            // followed by a fresh round on its own — the owner does
+            // not re-press start while the service is simply absent.
+            if (SeriesPolicy.shouldRepeatRound(autoRepeat, seriesSubmitted)) {
+                seriesLeft = seriesRoundCount;
+                seriesSubmitted = false;
+                roundNo++;
+                statusInfo.setText("لا قبول بعد — تبدأ الجولة " + roundNo + " تلقائيًا…");
+                handler.postDelayed(this::trySeriesSend, SERIES_GAP_MS);
+                return;
+            }
             seriesActive = false;
             setSeriesButtons(false);
             statusInfo.setText("اكتملت السلسلة ✓");
@@ -753,6 +780,7 @@ public class MainActivity extends Activity {
 
     private void onSeriesAttemptResolved(String status) {
         if (!seriesActive) return;
+        if ("SUBMITTED".equals(status)) seriesSubmitted = true;
         if (SeriesPolicy.shouldStop(stopOnSuccess, status)) {
             seriesActive = false;
             setSeriesButtons(false);
