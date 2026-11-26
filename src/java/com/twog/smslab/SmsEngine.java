@@ -122,11 +122,11 @@ public final class SmsEngine {
 
         String normalized = PhoneNorm.normalize(phone);
 
-        // Every message leaves with its send time stamped
-        // automatically — and its location under it when attaching
-        // is on. Both lines are part of the payload BEFORE encoding
-        // and part count are computed, so the record describes the
-        // exact payload that leaves the phone.
+        // Every message leaves stamped automatically: its location
+        // first (when attaching is on and a fix exists), then its
+        // send time under it. Both lines are part of the payload
+        // BEFORE encoding and part count are computed, so the record
+        // describes the exact payload that leaves the phone.
         double[] loc = LocUtil.lastKnown(appContext);
         String hhmm = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
                 .format(new java.util.Date());
