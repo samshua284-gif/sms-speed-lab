@@ -70,6 +70,9 @@ public class MainActivity extends Activity {
     private boolean pulseRunning;
     private Runnable versePulse;
 
+    private Button seriesBtn;
+    private Button seriesStopBtn;
+
     // Active location (1.18): the app asks for its own fixes.
     private TextView locStatus;
     private android.location.LocationManager locMgr;
@@ -197,8 +200,9 @@ public class MainActivity extends Activity {
         initVersePulse();
         if (!dhikrOn) showVerse(false);
 
-        Button seriesBtn = findViewById(R.id.seriesBtn);
-        Button seriesStopBtn = findViewById(R.id.seriesStopBtn);
+        seriesBtn = findViewById(R.id.seriesBtn);
+        seriesStopBtn = findViewById(R.id.seriesStopBtn);
+        setSeriesButtons(false);
         seriesBtn.setOnClickListener(v -> {
             if (!ensureSmsPermission()) return;
             int n;
@@ -211,6 +215,7 @@ public class MainActivity extends Activity {
             seriesActive = false;
             awaitingFix = false;
             if (fixTimeout != null) handler.removeCallbacks(fixTimeout);
+            setSeriesButtons(false);
             statusInfo.setText("أُوقفت السلسلة");
         });
 
@@ -510,6 +515,11 @@ public class MainActivity extends Activity {
                             android.location.LocationManager.NETWORK_PROVIDER,
                             null, ex, c);
                 } catch (Throwable ignored) {}
+                try {
+                    locMgr.getCurrentLocation(
+                            android.location.LocationManager.PASSIVE_PROVIDER,
+                            null, ex, c);
+                } catch (Throwable ignored) {}
             } else if (locListener != null) {
                 try {
                     locMgr.requestSingleUpdate(
@@ -543,7 +553,20 @@ public class MainActivity extends Activity {
                 + " — " + age);
     }
 
+    /**
+     * The series buttons wear the state (owner, 1.19): whichever
+     * button no longer applies stands DIMMED — at rest the stop
+     * button is dimmed, while a series runs the start button is,
+     * so the eye reads the state before the finger moves.
+     */
+    private void setSeriesButtons(boolean running) {
+        if (seriesBtn == null || seriesStopBtn == null) return;
+        seriesBtn.setAlpha(running ? 0.45f : 1f);
+        seriesStopBtn.setAlpha(running ? 1f : 0.45f);
+    }
+
     private void beginSeries(int n) {
+        setSeriesButtons(true);
         if (!engine.isAttachLoc() || LocUtil.lastKnown(this) != null) {
             startSeriesNow(n);
             return;
@@ -578,6 +601,7 @@ public class MainActivity extends Activity {
         if (!seriesActive) return;
         if (seriesLeft <= 0) {
             seriesActive = false;
+            setSeriesButtons(false);
             statusInfo.setText("اكتملت السلسلة ✓");
             return;
         }
@@ -589,6 +613,7 @@ public class MainActivity extends Activity {
         String text = messageInput.getText().toString();
         if (phone.isEmpty() || text.trim().isEmpty()) {
             seriesActive = false;
+            setSeriesButtons(false);
             statusInfo.setText("أُوقفت السلسلة: أدخل الرقم والنص أولًا");
             return;
         }
@@ -607,6 +632,7 @@ public class MainActivity extends Activity {
         if (!seriesActive) return;
         if (SeriesPolicy.shouldStop(stopOnSuccess, status)) {
             seriesActive = false;
+            setSeriesButtons(false);
             statusInfo.setText("توقفت السلسلة: قُبلت أول رسالة — وصلت ✓");
             return;
         }
