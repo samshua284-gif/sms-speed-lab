@@ -35,6 +35,10 @@ public final class GlowBorderDrawable extends Drawable {
             0xFF2FBF71, 0xFFFFFFFF, 0xFF7BE3A8,
             0xFFE8FFF2, 0xFF2FBF71};
 
+    /** The verse brackets' breathing: white into green and back. */
+    public static final int[] WHITE_GREEN = {
+            0xFFFFFFFF, 0xFF2FBF71, 0xFF7BE3A8, 0xFFFFFFFF};
+
     private static final int SEGMENTS = 56;
 
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

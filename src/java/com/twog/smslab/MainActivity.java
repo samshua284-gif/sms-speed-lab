@@ -62,6 +62,8 @@ public class MainActivity extends Activity {
     private GlowBorderDrawable toggleGlow;
     private android.animation.ValueAnimator glowAnimator;
     private View verseBox;
+    private TextView verseBracketStart;
+    private TextView verseBracketEnd;
 
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
@@ -166,6 +168,15 @@ public class MainActivity extends Activity {
             float p = (float) an.getAnimatedValue();
             dhikrGlow.setPhase(p);
             toggleGlow.setPhase(p);
+            // The verse's ornate brackets breathe with the light:
+            // white into green and back, on the same clock.
+            if (verseBox != null && verseBox.getVisibility() == View.VISIBLE
+                    && verseBracketStart != null) {
+                int c = GlowBorderDrawable.colorAt(
+                        GlowBorderDrawable.WHITE_GREEN, p);
+                verseBracketStart.setTextColor(c);
+                verseBracketEnd.setTextColor(c);
+            }
         });
         glowAnimator.start();
         dhikrOn = ui.getBoolean("dhikr_on", true);
@@ -174,6 +185,8 @@ public class MainActivity extends Activity {
             if (dhikrOn) stopDhikr(); else startDhikr();
         });
         verseBox = findViewById(R.id.verseBox);
+        verseBracketStart = findViewById(R.id.verseBracketStart);
+        verseBracketEnd = findViewById(R.id.verseBracketEnd);
         ((TextView) findViewById(R.id.verseText)).setText(DhikrCycle.VERSE);
         ((TextView) findViewById(R.id.verseRef)).setText(DhikrCycle.VERSE_REF);
         if (!dhikrOn) showVerse(false);
