@@ -732,7 +732,7 @@ public class MainActivity extends Activity {
             // Auto-repeat (1.24): a round with zero submissions is
             // followed by a fresh round on its own — the owner does
             // not re-press start while the service is simply absent.
-            if (SeriesPolicy.shouldRepeatRound(autoRepeat, seriesSubmitted, roundNo)) {
+            if (SeriesPolicy.shouldRepeatRound(autoRepeat, seriesSubmitted)) {
                 seriesLeft = seriesRoundCount;
                 seriesSubmitted = false;
                 roundNo++;
@@ -742,12 +742,7 @@ public class MainActivity extends Activity {
             }
             seriesActive = false;
             setSeriesButtons(false);
-            if (autoRepeat && !seriesSubmitted) {
-                // The ceiling (1.26): announced, never silent.
-                statusInfo.setText("توقفت: بلغت الحد الأقصى (" + SeriesPolicy.MAX_ROUNDS + " جولة) بلا قبول");
-            } else {
-                statusInfo.setText("اكتملت السلسلة ✓");
-            }
+            statusInfo.setText("اكتملت السلسلة ✓");
             return;
         }
         if (engine.isBusy()) {
