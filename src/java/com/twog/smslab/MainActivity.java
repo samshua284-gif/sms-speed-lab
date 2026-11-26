@@ -51,7 +51,6 @@ public class MainActivity extends Activity {
     private boolean seriesActive;
     private int seriesLeft;
     private boolean seriesScheduled;
-    private boolean stopOnSuccess;
     private boolean autoRepeat;
     private int seriesRoundCount;
     private boolean seriesSubmitted;
@@ -192,15 +191,6 @@ public class MainActivity extends Activity {
             }
         });
         updateCharInfo(messageInput.getText().toString());
-
-        CheckBox stopCheck = findViewById(R.id.stopOnSuccessCheck);
-        stopOnSuccess = ui.getBoolean("stop_on_success", false);
-        stopCheck.setChecked(stopOnSuccess);
-        stopCheck.setOnCheckedChangeListener((v, checked) -> {
-            stopOnSuccess = checked;
-            getSharedPreferences("smslab_ui", MODE_PRIVATE)
-                    .edit().putBoolean("stop_on_success", checked).apply();
-        });
 
         CheckBox repeatCheck = findViewById(R.id.autoRepeatCheck);
         autoRepeat = ui.getBoolean("auto_repeat", false);
@@ -781,7 +771,11 @@ public class MainActivity extends Activity {
     private void onSeriesAttemptResolved(String status) {
         if (!seriesActive) return;
         if ("SUBMITTED".equals(status)) seriesSubmitted = true;
-        if (SeriesPolicy.shouldStop(stopOnSuccess, status)) {
+        // One toggle carries the whole reach promise (owner, 1.25):
+        // auto-repeat until first success also STOPS at that success
+        // the moment it lands — the separate stop-on-success box
+        // was retired as redundant.
+        if (SeriesPolicy.shouldStop(autoRepeat, status)) {
             seriesActive = false;
             setSeriesButtons(false);
             statusInfo.setText("توقفت السلسلة: قُبلت أول رسالة — وصلت ✓");

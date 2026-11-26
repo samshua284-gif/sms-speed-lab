@@ -7,18 +7,23 @@ package com.twog.smslab;
  *  - Measurement (default): always completes the chosen count, so
  *    the statistics (average / fastest / slowest) rest on a full
  *    sample. Success changes nothing.
- *  - Reach (stopOnSuccess): the moment one attempt is SUBMITTED —
- *    accepted by the SMSC, i.e. the message has truly left — the
- *    series stops, so no balance is spent on attempts nobody needs.
+ *  - Reach (the autoRepeat toggle, named "auto-repeat until first
+ *    success"): the moment one attempt is SUBMITTED — accepted by
+ *    the SMSC, i.e. the message has truly left — the series stops,
+ *    so no balance is spent on attempts nobody needs; and a round
+ *    with no submission repeats on its own (shouldRepeatRound).
  *    The trigger is submission, not the delivery report: delivery
  *    can trail by minutes and is tracked on the attempt regardless.
+ *    (Until 1.24 reach had a second, separate stop-on-success box;
+ *    the owner judged it redundant — the toggle's name already
+ *    promises the stop — and 1.25 folded the two into one.)
  */
 public final class SeriesPolicy {
 
     private SeriesPolicy() {}
 
-    public static boolean shouldStop(boolean stopOnSuccess, String resolvedStatus) {
-        return stopOnSuccess && "SUBMITTED".equals(resolvedStatus);
+    public static boolean shouldStop(boolean reachOn, String resolvedStatus) {
+        return reachOn && "SUBMITTED".equals(resolvedStatus);
     }
 
     /**
