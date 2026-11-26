@@ -59,6 +59,7 @@ public final class SmsEngine {
     private Listener listener;
     private boolean registered;
     private Flight flight;
+    private boolean attachLoc;
 
     public SmsEngine(Context ctx, AttemptStore store) {
         this.appContext = ctx.getApplicationContext();
@@ -66,6 +67,9 @@ public final class SmsEngine {
     }
 
     public void setListener(Listener l) { listener = l; }
+
+    /** When on, the current coordinates are appended to the message text. */
+    public void setAttachLoc(boolean on) { attachLoc = on; }
 
     public boolean isBusy() { return flight != null && !flight.resolved; }
 
@@ -116,21 +120,36 @@ public final class SmsEngine {
     public long send(String phone, String text) {
         if (isBusy()) return -1;
 
+        String normalized = PhoneNorm.normalize(phone);
+
+        // Location first: the stamp — and, when attaching is on, the
+        // coordinate line — are part of the attempt BEFORE encoding
+        // and part count are computed, so the record describes the
+        // exact payload that leaves the phone.
+        double[] loc = LocUtil.lastKnown(appContext);
+        String finalText = text;
+        if (loc != null && attachLoc) {
+            finalText = text + LocUtil.locLine(loc[0], loc[1]);
+        }
+
         SmsManager mgr = getSmsManager();
-        ArrayList<String> parts = mgr.divideMessage(text);
+        ArrayList<String> parts = mgr.divideMessage(finalText);
         int partCount = Math.max(1, parts.size());
 
         CellInfoUtil.Snapshot cell = CellInfoUtil.snapshot(appContext);
-
-        String normalized = PhoneNorm.normalize(phone);
 
         AttemptStore.Attempt a = new AttemptStore.Attempt();
         a.id = store.nextId();
         a.tsWall = System.currentTimeMillis();
         a.phone = normalized;
         a.phoneTyped = phone;
-        a.text = text;
-        a.encoding = GsmUtil.encodingName(text);
+        a.text = finalText;
+        if (loc != null) {
+            String[] ll = LocUtil.fmt(loc[0], loc[1]).split(",");
+            a.lat = ll[0];
+            a.lon = ll[1];
+        }
+        a.encoding = GsmUtil.encodingName(finalText);
         a.parts = partCount;
         a.netType = cell.netType;
         a.dbm = (cell.dbm == null) ? 999 : cell.dbm;
@@ -162,7 +181,7 @@ public final class SmsEngine {
 
         try {
             if (partCount == 1) {
-                mgr.sendTextMessage(normalized, null, text, sentPI, delPI);
+                mgr.sendTextMessage(normalized, null, finalText, sentPI, delPI);
             } else {
                 ArrayList<PendingIntent> sList =
                         new ArrayList<>(Collections.nCopies(partCount, sentPI));

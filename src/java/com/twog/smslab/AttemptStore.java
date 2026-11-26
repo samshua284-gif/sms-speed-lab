@@ -41,6 +41,8 @@ public final class AttemptStore {
         public String error = "";
         public long submitMs = -1;
         public long deliveryMs = -1;
+        public String lat = "";    // "" = no fix at send time
+        public String lon = "";
 
         JSONObject toJson() {
             JSONObject o = new JSONObject();
@@ -51,6 +53,7 @@ public final class AttemptStore {
                 o.put("net", netType); o.put("dbm", dbm); o.put("level", level);
                 o.put("asu", asu); o.put("status", status); o.put("error", error);
                 o.put("submitMs", submitMs); o.put("deliveryMs", deliveryMs);
+                o.put("lat", lat); o.put("lon", lon);
             } catch (Exception ignored) {}
             return o;
         }
@@ -72,6 +75,8 @@ public final class AttemptStore {
             a.error = o.optString("error", "");
             a.submitMs = o.optLong("submitMs", -1);
             a.deliveryMs = o.optLong("deliveryMs", -1);
+            a.lat = o.optString("lat", "");
+            a.lon = o.optString("lon", "");
             return a;
         }
     }
@@ -87,6 +92,11 @@ public final class AttemptStore {
         long id = prefs.getLong("seq", 0) + 1;
         prefs.edit().putLong("seq", id).apply();
         return id;
+    }
+
+    /** The id the NEXT attempt will receive, without consuming it. */
+    public synchronized long peekNextId() {
+        return prefs.getLong("seq", 0) + 1;
     }
 
     public synchronized List<Attempt> all() {
@@ -147,7 +157,7 @@ public final class AttemptStore {
 
     public synchronized String toCsv() {
         StringBuilder sb = new StringBuilder();
-        sb.append("id,time_iso,phone_sent,phone_typed,encoding,parts,network,dbm,level,asu,status,error,submit_ms,delivery_ms,text\n");
+        sb.append("id,time_iso,phone_sent,phone_typed,encoding,parts,network,dbm,level,asu,lat,lon,status,error,submit_ms,delivery_ms,text\n");
         java.text.SimpleDateFormat fmt =
                 new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US);
         for (Attempt a : all()) {
@@ -161,6 +171,8 @@ public final class AttemptStore {
             sb.append(a.dbm == 999 ? "" : String.valueOf(a.dbm)).append(',');
             sb.append(a.level < 0 ? "" : String.valueOf(a.level)).append(',');
             sb.append(a.asu < 0 ? "" : String.valueOf(a.asu)).append(',');
+            sb.append(a.lat).append(',');
+            sb.append(a.lon).append(',');
             sb.append(q(a.status)).append(',');
             sb.append(q(a.error)).append(',');
             sb.append(a.submitMs < 0 ? "" : String.valueOf(a.submitMs)).append(',');

@@ -3,7 +3,10 @@ package com.twog.smslab;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -11,6 +14,7 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -78,18 +82,45 @@ public class MainActivity extends Activity {
             refreshStatsAndLog();
             if (AttemptStore.S_SUBMITTED.equals(a.status)) {
                 statusInfo.setText("قُبلت الرسالة عند مركز الرسائل — بانتظار تقرير التسليم");
+                beep(ToneGenerator.TONE_PROP_BEEP, 140);
                 onSeriesAttemptResolved();
             } else if (AttemptStore.S_DELIVERED.equals(a.status)) {
                 statusInfo.setText("سُلّمت الرسالة إلى الهاتف الآخر ✓");
+                beep(ToneGenerator.TONE_PROP_ACK, 220);
             } else if (AttemptStore.S_FAILED.equals(a.status)) {
                 statusInfo.setText("فشل الإرسال: " + a.error);
+                beep(ToneGenerator.TONE_PROP_NACK, 260);
                 onSeriesAttemptResolved();
             } else if (AttemptStore.S_TIMEOUT.equals(a.status)) {
                 statusInfo.setText("انقضت مهلة نتيجة الإرسال (النتيجة غير معروفة)");
+                beep(ToneGenerator.TONE_PROP_NACK, 260);
                 onSeriesAttemptResolved();
             }
         });
         engine.register();
+
+        // Restore the last number and message — a repeated field test
+        // must not start with retyping.
+        SharedPreferences ui = getSharedPreferences("smslab_ui", MODE_PRIVATE);
+        phoneInput.setText(ui.getString("last_phone", ""));
+        messageInput.setText(ui.getString("last_text", ""));
+
+        CheckBox attachLoc = findViewById(R.id.attachLocCheck);
+        attachLoc.setChecked(ui.getBoolean("attach_loc", true));
+        engine.setAttachLoc(attachLoc.isChecked());
+        attachLoc.setOnCheckedChangeListener((v, checked) -> {
+            engine.setAttachLoc(checked);
+            getSharedPreferences("smslab_ui", MODE_PRIVATE)
+                    .edit().putBoolean("attach_loc", checked).apply();
+        });
+
+        Button quickTestBtn = findViewById(R.id.quickTestBtn);
+        quickTestBtn.setOnClickListener(v -> {
+            String t = "TEST #" + store.peekNextId() + " - "
+                    + new SimpleDateFormat("HH:mm", Locale.US).format(new Date());
+            messageInput.setText(t);
+            messageInput.setSelection(t.length());
+        });
 
         messageInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
@@ -172,11 +203,27 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private void saveInputs() {
+        getSharedPreferences("smslab_ui", MODE_PRIVATE).edit()
+                .putString("last_phone", phoneInput.getText().toString())
+                .putString("last_text", messageInput.getText().toString())
+                .apply();
+    }
+
+    private void beep(int tone, int ms) {
+        try {
+            ToneGenerator tg = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80);
+            tg.startTone(tone, ms);
+            handler.postDelayed(tg::release, ms + 120);
+        } catch (Throwable ignored) {}
+    }
+
     private void doSend() {
         String phone = phoneInput.getText().toString().trim();
         String text = messageInput.getText().toString();
         if (phone.isEmpty()) { phoneInput.setError("أدخل رقم الهاتف"); return; }
         if (text.trim().isEmpty()) { messageInput.setError("أدخل نص الرسالة"); return; }
+        saveInputs();
         long id = engine.send(phone, text);
         if (id < 0) {
             Toast.makeText(this, "محاولة جارية — انتظر نتيجتها أولًا", Toast.LENGTH_SHORT).show();
@@ -209,6 +256,7 @@ public class MainActivity extends Activity {
             statusInfo.setText("أُوقفت السلسلة: أدخل الرقم والنص أولًا");
             return;
         }
+        saveInputs();
         long id = engine.send(phone, text);
         if (id >= 0) {
             seriesLeft--;
@@ -279,6 +327,7 @@ public class MainActivity extends Activity {
                .append(statusAr(a));
             if (a.submitMs >= 0) log.append(" • قبول ").append(a.submitMs).append("ms");
             if (a.deliveryMs >= 0) log.append(" • تسليم ").append(a.deliveryMs).append("ms");
+            if (!a.lat.isEmpty()) log.append(" • ").append(a.lat).append(',').append(a.lon);
             if (!a.error.isEmpty()) log.append(" • ").append(a.error);
             log.append('\n');
         }
@@ -321,6 +370,12 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         refreshSignal();
+    }
+
+    @Override
+    protected void onPause() {
+        saveInputs();
+        super.onPause();
     }
 
     @Override
