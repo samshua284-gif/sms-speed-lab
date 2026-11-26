@@ -15,34 +15,36 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
-            android:background="@drawable/dhikr_bar"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingTop="7dp"
-            android:paddingEnd="6dp"
-            android:paddingBottom="7dp">
+            android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/dhikrText"
-                android:layout_width="0dp"
+            <FrameLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:alpha="0"
-                android:gravity="center"
-                android:shadowColor="#C9A227"
-                android:shadowDx="0"
-                android:shadowDy="0"
-                android:shadowRadius="9"
-                android:text=""
-                android:textColor="@color/gold"
-                android:textSize="19sp"
-                android:textStyle="bold" />
+                android:background="@drawable/dhikr_bar"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/dhikrText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0"
+                    android:gravity="center"
+                    android:shadowColor="#FFC93C"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="14"
+                    android:text=""
+                    android:textColor="#FFE066"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
 
             <Button
                 android:id="@+id/dhikrToggle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginTop="5dp"
                 android:background="@drawable/btn_ghost"
                 android:text="إيقاف الذكر"
                 android:textColor="@color/ink"

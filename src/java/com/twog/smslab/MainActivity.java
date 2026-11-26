@@ -55,6 +55,7 @@ public class MainActivity extends Activity {
     private TextView dhikrText;
     private Button dhikrToggle;
     private boolean dhikrOn = true;
+    private boolean dhikrForeground;
     private int dhikrIdx;
 
     private final Runnable signalTick = new Runnable() {
@@ -235,30 +236,31 @@ public class MainActivity extends Activity {
     }
 
     // ---------------------------------------------------------------
-    // Dhikr bar: an endless, gentle rotation in the top bar —
-    // show 10 s, fade, next after 5 s (15 s before the loop
-    // restarts). Optional stop button; the choice is remembered.
+    // Dhikr bar: an endless rotation in the top bar — each phrase
+    // shines 5 s and the next follows immediately (owner's field
+    // revision, 1.12). Optional stop button under the frame; the
+    // choice is remembered; the loop rests in the background.
     // ---------------------------------------------------------------
 
     // Initialized in onCreate (the two runnables refer to each
     // other, which field initializers cannot express).
     private Runnable dhikrShow;
-    private Runnable dhikrHide;
+    private Runnable dhikrSwap;
 
     private void initDhikrRunnables() {
         dhikrShow = () -> {
-            if (!dhikrOn || dhikrText == null) return;
+            if (!dhikrOn || !dhikrForeground || dhikrText == null) return;
             dhikrText.setText(DhikrCycle.PHRASES[dhikrIdx]);
-            dhikrText.animate().alpha(1f).setDuration(700).start();
-            handler.postDelayed(dhikrHide, DhikrCycle.SHOW_MS);
+            dhikrText.animate().alpha(1f).setDuration(DhikrCycle.FADE_MS).start();
+            handler.postDelayed(dhikrSwap, DhikrCycle.SHOW_MS);
         };
-        dhikrHide = () -> {
-            if (dhikrText != null) {
-                dhikrText.animate().alpha(0f).setDuration(700).start();
-            }
-            long gap = DhikrCycle.gapAfter(dhikrIdx);
-            dhikrIdx = DhikrCycle.next(dhikrIdx);
-            if (dhikrOn) handler.postDelayed(dhikrShow, gap);
+        dhikrSwap = () -> {
+            if (dhikrText == null) return;
+            dhikrText.animate().alpha(0f).setDuration(DhikrCycle.FADE_MS)
+                    .withEndAction(() -> {
+                        dhikrIdx = DhikrCycle.next(dhikrIdx);
+                        if (dhikrOn && dhikrForeground) handler.post(dhikrShow);
+                    }).start();
         };
     }
 
@@ -269,7 +271,7 @@ public class MainActivity extends Activity {
         dhikrToggle.setText("إيقاف الذكر");
         dhikrIdx = 0;
         handler.removeCallbacks(dhikrShow);
-        handler.removeCallbacks(dhikrHide);
+        handler.removeCallbacks(dhikrSwap);
         handler.post(dhikrShow);
     }
 
@@ -279,9 +281,9 @@ public class MainActivity extends Activity {
                 .edit().putBoolean("dhikr_on", false).apply();
         dhikrToggle.setText("تشغيل الذكر");
         handler.removeCallbacks(dhikrShow);
-        handler.removeCallbacks(dhikrHide);
+        handler.removeCallbacks(dhikrSwap);
         if (dhikrText != null) {
-            dhikrText.animate().alpha(0f).setDuration(400).start();
+            dhikrText.animate().alpha(0f).setDuration(300).start();
         }
     }
 
@@ -433,17 +435,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         saveInputs();
+        dhikrForeground = false;
         handler.removeCallbacks(dhikrShow);
-        handler.removeCallbacks(dhikrHide);
+        handler.removeCallbacks(dhikrSwap);
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        dhikrForeground = true;
         if (dhikrOn && dhikrText != null) {
             handler.removeCallbacks(dhikrShow);
-            handler.removeCallbacks(dhikrHide);
+            handler.removeCallbacks(dhikrSwap);
             handler.post(dhikrShow);
         }
     }
