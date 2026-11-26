@@ -45,15 +45,21 @@ public final class LocUtil {
             android.content.SharedPreferences sp =
                     ctx.getSharedPreferences("smslab_fix", Context.MODE_PRIVATE);
             if (best != null) {
+                // Freshness is judged from the moment WE obtained
+                // the position (1.10) — not from the fix's own birth
+                // time: a fix born long ago while the sender sat
+                // still made the memory "expire" before it was ever
+                // used, and the field series lost its location from
+                // the second attempt on.
                 sp.edit()
                         .putFloat("lat", (float) best.getLatitude())
                         .putFloat("lon", (float) best.getLongitude())
-                        .putLong("time", best.getTime())
+                        .putLong("seen", System.currentTimeMillis())
                         .apply();
                 return new double[]{best.getLatitude(), best.getLongitude()};
             }
-            long t = sp.getLong("time", 0);
-            if (FixCache.usable(t, System.currentTimeMillis())) {
+            long seen = sp.getLong("seen", 0);
+            if (FixCache.usable(seen, System.currentTimeMillis())) {
                 return new double[]{
                         sp.getFloat("lat", 0f), sp.getFloat("lon", 0f)};
             }
