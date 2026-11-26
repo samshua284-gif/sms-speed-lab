@@ -220,6 +220,19 @@
                 android:textColor="@color/muted"
                 android:textSize="12sp" />
 
+            <Button
+                android:id="@+id/locEnableBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/btn_gold"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="تشغيل الموقع"
+                android:textColor="#1B1D2C"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/sendBanner"
                 android:layout_width="match_parent"

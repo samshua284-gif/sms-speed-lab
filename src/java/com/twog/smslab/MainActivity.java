@@ -75,6 +75,8 @@ public class MainActivity extends Activity {
 
     // Active location (1.18): the app asks for its own fixes.
     private TextView locStatus;
+    private Button locEnableBtn;
+    private boolean locDialogTried;
     private android.location.LocationManager locMgr;
     private android.location.LocationListener locListener;
     private boolean awaitingFix;
@@ -108,6 +110,38 @@ public class MainActivity extends Activity {
         seriesCount = findViewById(R.id.seriesCount);
         clearBtn = findViewById(R.id.clearBtn);
         locStatus = findViewById(R.id.locStatus);
+        locEnableBtn = findViewById(R.id.locEnableBtn);
+        locEnableBtn.setOnClickListener(v -> {
+            if (!hasLocPermission()) {
+                if (!locDialogTried) {
+                    // First press: the quick grant dialog.
+                    locDialogTried = true;
+                    requestPermissions(new String[]{
+                            Manifest.permission.SEND_SMS,
+                            Manifest.permission.READ_PHONE_STATE,
+                            Manifest.permission.ACCESS_FINE_LOCATION}, REQ_PERM);
+                } else {
+                    // The dialog is being suppressed (denied for
+                    // good): the certain road is the app's own
+                    // settings page, permissions row.
+                    try {
+                        Intent it = new Intent(
+                                android.provider.Settings
+                                        .ACTION_APPLICATION_DETAILS_SETTINGS);
+                        it.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(it);
+                    } catch (Throwable ignored) {}
+                }
+            } else {
+                // Permission is fine; the phone's location switch
+                // itself is off — open its own page.
+                try {
+                    startActivity(new Intent(
+                            android.provider.Settings
+                                    .ACTION_LOCATION_SOURCE_SETTINGS));
+                } catch (Throwable ignored) {}
+            }
+        });
 
         engine.setListener(a -> {
             refreshStatsAndLog();
@@ -555,21 +589,53 @@ public class MainActivity extends Activity {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean isSystemLocationOn() {
+        try {
+            if (locMgr == null) {
+                locMgr = (android.location.LocationManager)
+                        getSystemService(LOCATION_SERVICE);
+            }
+            if (locMgr == null) return false;
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                return locMgr.isLocationEnabled();
+            }
+            return locMgr.isProviderEnabled(
+                            android.location.LocationManager.GPS_PROVIDER)
+                    || locMgr.isProviderEnabled(
+                            android.location.LocationManager.NETWORK_PROVIDER);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     /**
      * The status line tells the TRUTH, in order (1.20): attach
      * off? permission off? no fix? stale fix (named stale, with
      * its age — never dressed as «جاهز»)? only then: ready.
+     *
+     * And while location is OFF — by permission or by the phone's
+     * own switch — a «تشغيل الموقع» button stands beside the
+     * warning (owner, 1.21); the moment location works, both the
+     * button and the warning are gone.
      */
     private void refreshLocStatus() {
         if (locStatus == null || engine == null) return;
         if (!engine.isAttachLoc()) {
             locStatus.setText("الموقع: الإرفاق مغلق من الخيار أعلاه");
+            if (locEnableBtn != null) locEnableBtn.setVisibility(View.GONE);
             return;
         }
         if (!hasLocPermission()) {
             locStatus.setText("الموقع: إذن الموقع غير مفعّل — فعّله ليُرفق الموقع في الرسالة");
+            if (locEnableBtn != null) locEnableBtn.setVisibility(View.VISIBLE);
             return;
         }
+        if (!isSystemLocationOn()) {
+            locStatus.setText("الموقع: متوقف في الهاتف — شغّله ليُرفق الموقع في الرسالة");
+            if (locEnableBtn != null) locEnableBtn.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (locEnableBtn != null) locEnableBtn.setVisibility(View.GONE);
         double[] fix = LocUtil.cachedFix(this);
         if (fix == null) {
             locStatus.setText("الموقع: لا إصلاح بعد — إن بدأت الآن خرجت الرسالة بالوقت فقط");
