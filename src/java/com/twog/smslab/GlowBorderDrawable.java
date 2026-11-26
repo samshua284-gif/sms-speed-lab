@@ -35,9 +35,13 @@ public final class GlowBorderDrawable extends Drawable {
             0xFF2FBF71, 0xFFFFFFFF, 0xFF7BE3A8,
             0xFFE8FFF2, 0xFF2FBF71};
 
-    /** The verse brackets' breathing: white into green and back. */
+    /**
+     * The verse brackets' breathing (1.17): white melts into a
+     * saturated green, RESTS there a full third of the cycle so
+     * the eye cannot miss it, then melts back to white.
+     */
     public static final int[] WHITE_GREEN = {
-            0xFFFFFFFF, 0xFF2FBF71, 0xFF7BE3A8, 0xFFFFFFFF};
+            0xFFFFFFFF, 0xFF22B45E, 0xFF22B45E, 0xFFFFFFFF};
 
     private static final int SEGMENTS = 56;
 

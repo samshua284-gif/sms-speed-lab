@@ -62,8 +62,13 @@ public class MainActivity extends Activity {
     private GlowBorderDrawable toggleGlow;
     private android.animation.ValueAnimator glowAnimator;
     private View verseBox;
-    private TextView verseBracketStart;
-    private TextView verseBracketEnd;
+    private TextView verseText;
+    private android.text.SpannableString verseSpannable;
+    private Object bracketSpanStart;
+    private Object bracketSpanEnd;
+    private boolean verseShown;
+    private boolean pulseRunning;
+    private Runnable versePulse;
 
     private final Runnable signalTick = new Runnable() {
         @Override public void run() {
@@ -168,15 +173,6 @@ public class MainActivity extends Activity {
             float p = (float) an.getAnimatedValue();
             dhikrGlow.setPhase(p);
             toggleGlow.setPhase(p);
-            // The verse's ornate brackets breathe with the light:
-            // white into green and back, on the same clock.
-            if (verseBox != null && verseBox.getVisibility() == View.VISIBLE
-                    && verseBracketStart != null) {
-                int c = GlowBorderDrawable.colorAt(
-                        GlowBorderDrawable.WHITE_GREEN, p);
-                verseBracketStart.setTextColor(c);
-                verseBracketEnd.setTextColor(c);
-            }
         });
         glowAnimator.start();
         dhikrOn = ui.getBoolean("dhikr_on", true);
@@ -185,10 +181,10 @@ public class MainActivity extends Activity {
             if (dhikrOn) stopDhikr(); else startDhikr();
         });
         verseBox = findViewById(R.id.verseBox);
-        verseBracketStart = findViewById(R.id.verseBracketStart);
-        verseBracketEnd = findViewById(R.id.verseBracketEnd);
-        ((TextView) findViewById(R.id.verseText)).setText(DhikrCycle.VERSE);
+        verseText = findViewById(R.id.verseText);
         ((TextView) findViewById(R.id.verseRef)).setText(DhikrCycle.VERSE_REF);
+        buildVerseText();
+        initVersePulse();
         if (!dhikrOn) showVerse(false);
 
         Button seriesBtn = findViewById(R.id.seriesBtn);
@@ -312,6 +308,8 @@ public class MainActivity extends Activity {
         getSharedPreferences("smslab_ui", MODE_PRIVATE)
                 .edit().putBoolean("dhikr_on", true).apply();
         dhikrToggle.setText("إيقاف الذكر");
+        verseShown = false;
+        stopVersePulse();
         if (verseBox != null) verseBox.setVisibility(View.GONE);
         if (dhikrText != null) dhikrText.setVisibility(View.VISIBLE);
         dhikrIdx = 0;
@@ -331,11 +329,77 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * The verse text with its ornate brackets INSIDE the text
+     * (owner's correction, 1.17): ﴿ stands immediately before
+     * «إِنَّ» at the verse's head and ﴾ immediately after
+     * «تَسْلِيمًا» at its tail, exactly as the mushaf prints
+     * them. The brackets are enlarged by a size span and coloured
+     * by two colour spans the pulse rewrites as they breathe.
+     */
+    private void buildVerseText() {
+        String full = "﴿" + DhikrCycle.VERSE + "﴾";
+        verseSpannable = new android.text.SpannableString(full);
+        int last = full.length() - 1;
+        verseSpannable.setSpan(new android.text.style.RelativeSizeSpan(1.45f),
+                0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        verseSpannable.setSpan(new android.text.style.RelativeSizeSpan(1.45f),
+                last, full.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        paintBrackets(0xFFFFFFFF);
+        verseText.setText(verseSpannable);
+    }
+
+    private void paintBrackets(int color) {
+        if (bracketSpanStart != null) verseSpannable.removeSpan(bracketSpanStart);
+        if (bracketSpanEnd != null) verseSpannable.removeSpan(bracketSpanEnd);
+        bracketSpanStart = new android.text.style.ForegroundColorSpan(color);
+        bracketSpanEnd = new android.text.style.ForegroundColorSpan(color);
+        int last = verseSpannable.length() - 1;
+        verseSpannable.setSpan(bracketSpanStart, 0, 1,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        verseSpannable.setSpan(bracketSpanEnd, last, verseSpannable.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    /**
+     * The brackets' breathing runs on its OWN clock (1.17): a
+     * 2.8 s cycle — white melts to green, rests green a full
+     * third, melts back — repainted every 120 ms while the verse
+     * is shown. (In 1.16 the pulse rode the frame's 7 s clock
+     * through separate side views and the owner saw no change.)
+     */
+    private void initVersePulse() {
+        versePulse = () -> {
+            if (!verseShown || verseText == null) {
+                pulseRunning = false;
+                return;
+            }
+            float t = GlowBorderDrawable.phase(
+                    android.os.SystemClock.elapsedRealtime(), 2800L);
+            paintBrackets(GlowBorderDrawable.colorAt(
+                    GlowBorderDrawable.WHITE_GREEN, t));
+            verseText.setText(verseSpannable);
+            handler.postDelayed(versePulse, 120);
+        };
+    }
+
+    private void startVersePulse() {
+        if (pulseRunning || versePulse == null) return;
+        pulseRunning = true;
+        handler.post(versePulse);
+    }
+
+    private void stopVersePulse() {
+        pulseRunning = false;
+        if (versePulse != null) handler.removeCallbacks(versePulse);
+    }
+
+    /**
      * While the dhikr rests, the frame carries the noble verse —
      * snow-white with a yellow glow, standing still until the
      * dhikr is started again (owner, 1.15).
      */
     private void showVerse(boolean animate) {
+        verseShown = true;
         if (dhikrText != null) {
             dhikrText.animate().cancel();
             dhikrText.setVisibility(View.GONE);
@@ -349,6 +413,7 @@ public class MainActivity extends Activity {
                 verseBox.setAlpha(1f);
             }
         }
+        startVersePulse();
     }
 
     // ---------------------------------------------------------------
@@ -502,6 +567,7 @@ public class MainActivity extends Activity {
         dhikrForeground = false;
         handler.removeCallbacks(dhikrShow);
         handler.removeCallbacks(dhikrSwap);
+        stopVersePulse();
         if (glowAnimator != null) glowAnimator.cancel();
         super.onPause();
     }
@@ -511,6 +577,7 @@ public class MainActivity extends Activity {
         super.onResume();
         dhikrForeground = true;
         if (glowAnimator != null && !glowAnimator.isRunning()) glowAnimator.start();
+        if (verseShown) startVersePulse();
         if (dhikrOn && dhikrText != null) {
             handler.removeCallbacks(dhikrShow);
             handler.removeCallbacks(dhikrSwap);
