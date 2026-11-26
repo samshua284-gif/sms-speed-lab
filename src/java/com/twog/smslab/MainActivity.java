@@ -165,6 +165,7 @@ public class MainActivity extends Activity {
             dhikrGlow.setPhase(p);
             toggleGlow.setPhase(p);
         });
+        glowAnimator.start();
         dhikrOn = ui.getBoolean("dhikr_on", true);
         dhikrToggle.setText(dhikrOn ? "إيقاف الذكر" : "تشغيل الذكر");
         dhikrToggle.setOnClickListener(v -> {
